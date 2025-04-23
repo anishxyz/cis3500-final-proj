@@ -1,30 +1,23 @@
 // popup.js
 
-// --- Constants ---
+// Constants
 const REVIEW_PAGE_REGEX = /^https:\/\/www\.amazon\.com\/product-reviews\/([A-Z0-9]{10})/;
 const PRODUCT_PAGE_REGEX = /^https:\/\/www\.amazon\.com\/.*\/dp\/([A-Z0-9]{10})/;
 
-// --- DOM Elements ---
+// DOM Elements
 let contentDiv;
 let loadingDiv;
 
-// --- Helper Functions ---
+// Helper Functions
 
-/**
- * Toggles the visibility of the loading indicator.
- * @param {boolean} show - True to show, false to hide.
- */
+/** Toggles loading indicator visibility */
 function toggleLoading(show) {
     if (loadingDiv) {
         loadingDiv.style.display = show ? 'block' : 'none';
     }
 }
 
-/**
- * Updates the content of the popup and hides the loading indicator.
- * @param {string|null} htmlContent - HTML content to set.
- * @param {string|null} textContent - Text content to set (if htmlContent is null).
- */
+/** Updates popup content and hides loading */
 function updatePopupContent(htmlContent = null, textContent = null) {
     if (contentDiv) {
         if (htmlContent !== null) {
@@ -36,10 +29,7 @@ function updatePopupContent(htmlContent = null, textContent = null) {
     toggleLoading(false);
 }
 
-/**
- * Gets the current active tab.
- * @returns {Promise<chrome.tabs.Tab | null>} The active tab or null if error.
- */
+/** Gets current active tab */
 async function getCurrentTab() {
     try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -50,11 +40,7 @@ async function getCurrentTab() {
     }
 }
 
-/**
- * Analyzes the URL to determine page type and ASIN.
- * @param {string} url - The URL to analyze.
- * @returns {{ type: 'review'|'product'|'other', asin: string|null }}
- */
+/** Analyzes URL for page type and ASIN */
 function getPageInfo(url) {
     const reviewMatch = url.match(REVIEW_PAGE_REGEX);
     if (reviewMatch) {
@@ -67,22 +53,21 @@ function getPageInfo(url) {
     return { type: 'other', asin: null };
 }
 
-/**
- * Placeholder function to retrieve the OpenAI API key.
- * **IMPORTANT:** Implement secure storage, e.g., via chrome.storage.local 
- * and an options page for the user to input their key.
- * @returns {Promise<string|null>} The API key or null if not found.
+/** 
+ * Placeholder to get OpenAI API key. 
+ * **IMPORTANT:** Replace with secure storage (chrome.storage.local).
  */
 async function getApiKey() {
-    return "API KEY HERE";
+    try {
+        const result = await chrome.storage.local.get(['openaiApiKey']);
+        return result.openaiApiKey || null;
+    } catch (error) {
+        console.error("Error retrieving API key from storage:", error);
+        return null;
+    }
 }
 
-/**
- * Appends streamed summary content to the designated output area.
- * Clears previous content on the first call for a new summary.
- * @param {string} chunk - The piece of text content to append.
- * @param {boolean} isFirstChunk - Whether this is the first chunk of a new summary.
- */
+/** Appends streamed summary content to #summaryOutput */
 function displaySummaryStream(chunk, isFirstChunk = false) {
     const summaryOutputDiv = document.getElementById('summaryOutput');
     if (!summaryOutputDiv) {
@@ -93,14 +78,10 @@ function displaySummaryStream(chunk, isFirstChunk = false) {
         summaryOutputDiv.innerHTML = ''; // Clear previous summary
         summaryOutputDiv.style.display = 'block'; // Make visible
     }
-    // Append chunk - handle potential markdown later or use a library
     summaryOutputDiv.textContent += chunk;
 }
 
-/**
- * Creates and configures the 'Summarize Reviews' button.
- * @returns {HTMLButtonElement} The configured button element.
- */
+/** Creates the 'Summarize Reviews' button */
 function createSummarizeButton() {
     const summarizeBtn = document.createElement('button');
     summarizeBtn.id = 'summarizeBtn';
@@ -109,7 +90,6 @@ function createSummarizeButton() {
 
     summarizeBtn.addEventListener('click', async () => {
         console.log("Summarize button clicked.");
-        // Ensure reviews are available (they should be if button is visible)
         if (window.allReviews && window.allReviews.length > 0) {
             summarizeBtn.disabled = true; // Disable button during API call
             summarizeBtn.textContent = 'Summarizing...';
@@ -124,10 +104,7 @@ function createSummarizeButton() {
                 return;
             }
 
-            // Combine reviews into a single string (Potential token limit issue!)
             const reviewsText = window.allReviews.join('\n---\n'); 
-            // Consider truncating or sampling if reviewsText is too long
-
             console.log(`Summarizing ${window.allReviews.length} reviews...`);
             updatePopupContent(null, 'Summarization started...'); // Update main content area
 
@@ -157,7 +134,6 @@ function createSummarizeButton() {
                     throw new Error('Response body is null, cannot read stream.');
                 }
 
-                // Process the stream
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let isFirst = true;
@@ -165,7 +141,6 @@ function createSummarizeButton() {
                     const { done, value } = await reader.read();
                     if (done) break;
                     const chunk = decoder.decode(value, { stream: true });
-                    // SSE format sends data in lines like: data: { ... }
                     const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
                     for (const line of lines) {
                         const jsonStr = line.substring(5).trim(); // Remove 'data: '
@@ -201,10 +176,7 @@ function createSummarizeButton() {
     return summarizeBtn;
 }
 
-/**
- * Displays the list of reviews in the popup.
- * @param {string[]} reviews - Array of review texts.
- */
+/** Displays review list (and summarize button) */
 function displayReviews(reviews) {
     if (!contentDiv) return;
 
@@ -212,14 +184,10 @@ function displayReviews(reviews) {
         let html = `<h4>Reviews (${reviews.length}):</h4>`;
         updatePopupContent(html); // Set the title first
 
-        // --- Create and Add Summarize Button --- 
         const summarizeBtn = createSummarizeButton();
         contentDiv.appendChild(summarizeBtn); // Append the button first
-        // ---------------------------
 
-        // --- Create and Add Reviews List ---
         const list = document.createElement('ul');
-        // Display first 5 reviews
         reviews.slice(0, 5).forEach(review => {
             const item = document.createElement('li');
             item.textContent = review.substring(0, 100) + (review.length > 100 ? '...' : ''); // Truncate
@@ -231,9 +199,7 @@ function displayReviews(reviews) {
             list.appendChild(moreItem);
         }
         contentDiv.appendChild(list); // Append the list after the button
-        // -----------------------------
 
-        // Store the full list globally (consider chrome.storage.local for persistence)
         window.allReviews = reviews;
         console.log("Stored all reviews:", window.allReviews);
     } else {
@@ -241,10 +207,7 @@ function displayReviews(reviews) {
     }
 }
 
-/**
- * Handles logic for when the user is on a review page.
- * @param {number} tabId - The ID of the current tab.
- */
+/** Handles review page logic (sends message to content script) */
 function handleReviewPage(tabId) {
     console.log("On review page. Sending message to content script.");
     chrome.tabs.sendMessage(tabId, { action: "getReviews" }, (response) => {
@@ -264,25 +227,20 @@ function handleReviewPage(tabId) {
     });
 }
 
-/**
- * Handles logic for when the user is on a product page.
- * @param {string} asin - The ASIN of the product.
- */
+/** Handles product page logic (shows link to reviews) */
 function handleProductPage(asin) {
     console.log("On product page. ASIN:", asin);
     const reviewUrl = `https://www.amazon.com/product-reviews/${asin}`;
     updatePopupContent(`You are on a product page. <a href="${reviewUrl}" target="_blank">Go to the Reviews Page</a> to summarize.`);
 }
 
-/**
- * Handles logic for when the user is on a non-relevant page.
- */
+/** Handles non-relevant page logic */
 function handleGenericPage() {
     console.log("Not a relevant Amazon page.");
     updatePopupContent(null, "This extension works on Amazon product pages and product review pages.");
 }
 
-// --- Main Execution ---
+// Main Execution
 
 document.addEventListener('DOMContentLoaded', async () => {
     contentDiv = document.getElementById('content');
@@ -317,7 +275,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (asin) {
                 handleProductPage(asin);
             } else {
-                // Should not happen if regex is correct, but handle defensively
                 console.error("Product page detected but ASIN is missing.");
                 handleGenericPage();
             }
