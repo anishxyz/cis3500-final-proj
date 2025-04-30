@@ -59,13 +59,15 @@ function getPageInfo(url) {
  */
 async function getApiKey() {
     try {
-        const result = await chrome.storage.local.get(['openaiApiKey']);
+        const result = await chrome.storage.local.get('openaiApiKey');
+        console.log('Stored API key:', result.openaiApiKey);
         return result.openaiApiKey || null;
     } catch (error) {
         console.error("Error retrieving API key from storage:", error);
         return null;
     }
 }
+
 
 /** Appends streamed summary content to #summaryOutput */
 function displaySummaryStream(chunk, isFirstChunk = false) {

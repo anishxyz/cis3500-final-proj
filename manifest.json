@@ -6,10 +6,15 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "storage"
   ],
   "action": {
     "default_popup": "popup.html"
+  },
+  "icons": {
+    "48": "icons/arsLogo.png",
+    "128": "icons/arsLogo.png"
   },
   "content_scripts": [
     {
