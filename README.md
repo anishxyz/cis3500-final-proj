@@ -35,7 +35,7 @@ Amazon Review Summarizer is a lightweight Chrome extension that provides a one-c
 ## Individual Contributions
 
 Juno Kim
-- Frontend formatting for GPT response
+- OpenAI API Key Usage
 - E2E Testing
 - Final presentation and demo walkthrough
 
