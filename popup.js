@@ -8,16 +8,25 @@ const PRODUCT_PAGE_REGEX = /^https:\/\/www\.amazon\.com\/.*\/dp\/([A-Z0-9]{10})/
 let contentDiv;
 let loadingDiv;
 
-// Helper Functions
-
-/** Toggles loading indicator visibility */
+/**
+ * Toggles the visibility of the loading indicator.
+ *
+ * @param {boolean} show - If true, displays the loading indicator; otherwise, hides it.
+ * @returns {void}
+ */
 function toggleLoading(show) {
     if (loadingDiv) {
         loadingDiv.style.display = show ? 'block' : 'none';
     }
 }
 
-/** Updates popup content and hides loading */
+/**
+ * Updates the popup content by setting either HTML or text content and hides the loading indicator.
+ *
+ * @param {string|null} [htmlContent=null] - HTML content to be inserted (takes precedence if provided).
+ * @param {string|null} [textContent=null] - Text content to be shown if HTML content is not provided.
+ * @returns {void}
+ */
 function updatePopupContent(htmlContent = null, textContent = null) {
     if (contentDiv) {
         if (htmlContent !== null) {
@@ -29,7 +38,11 @@ function updatePopupContent(htmlContent = null, textContent = null) {
     toggleLoading(false);
 }
 
-/** Gets current active tab */
+/**
+ * Retrieves the currently active tab in the current window.
+ *
+ * @returns {Promise<Object|null>} A promise that resolves to the active tab object or null if not found.
+ */
 async function getCurrentTab() {
     try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -40,7 +53,12 @@ async function getCurrentTab() {
     }
 }
 
-/** Analyzes URL for page type and ASIN */
+/**
+ * Analyzes the provided URL to determine the page type and extract the ASIN if applicable.
+ *
+ * @param {string} url - The URL to analyze.
+ * @returns {{type: string, asin: string|null}} An object containing the page type ('review', 'product', or 'other') and the extracted ASIN if available.
+ */
 function getPageInfo(url) {
     const reviewMatch = url.match(REVIEW_PAGE_REGEX);
     if (reviewMatch) {
@@ -53,9 +71,10 @@ function getPageInfo(url) {
     return { type: 'other', asin: null };
 }
 
-/** 
- * Placeholder to get OpenAI API key. 
- * **IMPORTANT:** Replace with secure storage (chrome.storage.local).
+/**
+ * Retrieves the OpenAI API key from chrome storage.
+ *
+ * @returns {Promise<string|null>} A promise that resolves to the API key as a string or null if not found.
  */
 async function getApiKey() {
     try {
@@ -68,8 +87,13 @@ async function getApiKey() {
     }
 }
 
-
-/** Appends streamed summary content to #summaryOutput in DOM format */
+/**
+ * Appends a chunk of streamed summary content to the designated summary output area in the DOM.
+ *
+ * @param {string} chunk - The HTML content chunk to append.
+ * @param {boolean} [isFirstChunk=false] - Flag indicating if this is the first chunk; if true, clears previous content.
+ * @returns {void}
+ */
 function displaySummaryStream(chunk, isFirstChunk = false) {
     let summaryOutputDiv = document.getElementById('summaryOutput');
 
@@ -89,23 +113,27 @@ function displaySummaryStream(chunk, isFirstChunk = false) {
 
     // Parse the chunk as HTML and append it to the summaryOutputDiv
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = chunk; // Parse the chunk as HTML
+    tempDiv.innerHTML = chunk;
     while (tempDiv.firstChild) {
-        summaryOutputDiv.appendChild(tempDiv.firstChild); // Append each child element
+        summaryOutputDiv.appendChild(tempDiv.firstChild);
     }
 }
 
-/** Creates the 'Summarize Reviews' button */
+/**
+ * Creates and returns a button element that initiates the review summarization process when clicked.
+ *
+ * @returns {HTMLButtonElement} The created 'Summarize Reviews' button.
+ */
 function createSummarizeButton() {
     const summarizeBtn = document.createElement('button');
     summarizeBtn.id = 'summarizeBtn';
     summarizeBtn.textContent = 'Summarize Reviews';
-    summarizeBtn.style.marginBottom = '10px'; // Add some spacing below
+    summarizeBtn.style.marginBottom = '10px'; // Add spacing below
 
     summarizeBtn.addEventListener('click', async () => {
         console.log("Summarize button clicked.");
         if (window.allReviews && window.allReviews.length > 0) {
-            summarizeBtn.disabled = true; // Disable button during API call
+            summarizeBtn.disabled = true;
             summarizeBtn.textContent = 'Summarizing...';
             displaySummaryStream('', true); // Clear previous summary display
 
@@ -118,9 +146,9 @@ function createSummarizeButton() {
                 return;
             }
 
-            const reviewsText = window.allReviews.join('\n---\n'); 
+            const reviewsText = window.allReviews.join('\n---\n');
             console.log(`Summarizing ${window.allReviews.length} reviews...`);
-            updatePopupContent(null, 'Summarization started...'); // Update main content area
+            updatePopupContent(null, 'Summarization started...');
 
             try {
                 const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -132,7 +160,7 @@ function createSummarizeButton() {
                     body: JSON.stringify({
                         model: "gpt-4o",
                         messages: [
-                            {"role": "system", "content": "You are a helpful assistant. Please summarize the provided Amazon product reviews in raw text format. Focus on common pros and cons mentioned across multiple reviews and provide a concise overall summary conclusion. Structure it clearly with headings like 'Pros', 'Cons', and 'Summary', but don't use asterixes to bold any headings, this is raw text."},
+                            {"role": "system", "content": "You are a helpful assistant. Please summarize the provided Amazon product reviews in raw text format. Focus on common pros and cons mentioned across multiple reviews and provide a concise overall summary conclusion. Structure it clearly with headings like 'Pros', 'Cons', and 'Summary', but don't use asterisks to bold any headings, this is raw text."},
                             {"role": "user", "content": `Here are the product reviews to summarize:\n\n${reviewsText}`}
                         ],
                         stream: true,
@@ -140,14 +168,13 @@ function createSummarizeButton() {
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({})); // Try to get error details
+                    const errorData = await response.json().catch(() => ({}));
                     throw new Error(`OpenAI API Error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
                 }
 
                 if (!response.body) {
                     throw new Error('Response body is null, cannot read stream.');
                 }
-
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -158,8 +185,8 @@ function createSummarizeButton() {
                     const chunk = decoder.decode(value, { stream: true });
                     const lines = chunk.split('\n').filter(line => line.trim().startsWith('data:'));
                     for (const line of lines) {
-                        const jsonStr = line.substring(5).trim(); // Remove 'data: '
-                        if (jsonStr === '[DONE]') break; // Stream finished signal
+                        const jsonStr = line.substring(5).trim();
+                        if (jsonStr === '[DONE]') break;
                         try {
                             const parsed = JSON.parse(jsonStr);
                             const content = parsed.choices?.[0]?.delta?.content;
@@ -173,14 +200,14 @@ function createSummarizeButton() {
                     }
                 }
                 console.log("Stream finished.");
-                displaySummaryStream('\n\n--- END OF SUMMARY ---', false);
+                displaySummaryStream('\\n\\n--- END OF SUMMARY ---', false);
 
             } catch (error) {
                 console.error("Error calling OpenAI API:", error);
-                displaySummaryStream(`\n\n--- ERROR ---\n${error.message}`, isFirst);
+                displaySummaryStream(`\\n\\n--- ERROR ---\\n${error.message}`, isFirst);
                 updatePopupContent(null, `Error during summarization: ${error.message}`);
             } finally {
-                summarizeBtn.disabled = false; // Re-enable button
+                summarizeBtn.disabled = false;
                 summarizeBtn.textContent = 'Summarize Reviews';
             }
 
@@ -192,21 +219,39 @@ function createSummarizeButton() {
     return summarizeBtn;
 }
 
-/** Displays review list (and summarize button) */
+/**
+ * Handles click event on the given summarize button to trigger the summarization process.
+ * This function is primarily used for testing purposes.
+ *
+ * @param {HTMLButtonElement} summarizeBtn - The button element to be clicked.
+ * @returns {Promise<void>} A promise that resolves after a short delay to allow asynchronous processing.
+ */
+async function handleSummarizeButtonClick(summarizeBtn) {
+    summarizeBtn.click();
+    // Wait for asynchronous operations to complete; adjust delay if necessary.
+    return new Promise(resolve => setTimeout(resolve, 100));
+}
+
+/**
+ * Displays a list of reviews in the popup and appends a summarization button.
+ *
+ * @param {string[]} reviews - Array of review texts.
+ * @returns {void}
+ */
 function displayReviews(reviews) {
     if (!contentDiv) return;
 
     if (reviews.length > 0) {
         let html = `<h4>Reviews (${reviews.length}):</h4>`;
-        updatePopupContent(html); // Set the title first
+        updatePopupContent(html);
 
         const summarizeBtn = createSummarizeButton();
-        contentDiv.appendChild(summarizeBtn); // Append the button first
+        contentDiv.appendChild(summarizeBtn);
 
         const list = document.createElement('ul');
         reviews.slice(0, 5).forEach(review => {
             const item = document.createElement('li');
-            item.textContent = review.substring(0, 100) + (review.length > 100 ? '...' : ''); // Truncate
+            item.textContent = review.substring(0, 100) + (review.length > 100 ? '...' : '');
             list.appendChild(item);
         });
         if (reviews.length > 5) {
@@ -214,7 +259,7 @@ function displayReviews(reviews) {
             moreItem.textContent = `... and ${reviews.length - 5} more.`;
             list.appendChild(moreItem);
         }
-        contentDiv.appendChild(list); // Append the list after the button
+        contentDiv.appendChild(list);
 
         window.allReviews = reviews;
         console.log("Stored all reviews:", window.allReviews);
@@ -223,7 +268,12 @@ function displayReviews(reviews) {
     }
 }
 
-/** Handles review page logic (sends message to content script) */
+/**
+ * Handles the review page logic by sending a message to the content script to retrieve reviews.
+ *
+ * @param {number} tabId - The ID of the current tab.
+ * @returns {void}
+ */
 function handleReviewPage(tabId) {
     console.log("On review page. Sending message to content script.");
     chrome.tabs.sendMessage(tabId, { action: "getReviews" }, (response) => {
@@ -236,7 +286,6 @@ function handleReviewPage(tabId) {
         if (response && response.reviews) {
             console.log("Received reviews:", response.reviews.length);
             displayReviews(response.reviews);
-
         } else {
             console.log("No response or reviews array missing.");
             updatePopupContent(null, "Could not retrieve reviews. Make sure you are on the reviews page and refresh.");
@@ -244,20 +293,33 @@ function handleReviewPage(tabId) {
     });
 }
 
-/** Handles product page logic (shows link to reviews) */
+/**
+ * Handles product page logic by constructing a review page URL using the ASIN and updating the popup content.
+ *
+ * @param {string} asin - The Amazon Standard Identification Number extracted from the URL.
+ * @returns {void}
+ */
 function handleProductPage(asin) {
     console.log("On product page. ASIN:", asin);
     const reviewUrl = `https://www.amazon.com/product-reviews/${asin}`;
     updatePopupContent(`You are on a product page. <a href="${reviewUrl}" target="_blank">Go to the Reviews Page</a> to summarize.`);
 }
 
-/** Handles non-relevant page logic */
+/**
+ * Handles non-relevant page logic by updating the popup when the page is not an Amazon product or review page.
+ *
+ * @returns {void}
+ */
 function handleGenericPage() {
     console.log("Not a relevant Amazon page.");
     updatePopupContent(null, "This extension works on Amazon product pages and product review pages.");
 }
 
-/** Checks for OpenAI API key and displays status */
+/**
+ * Checks if the OpenAI API key is stored and updates the DOM with the status.
+ *
+ * @returns {Promise<void>} A promise that resolves once the API key status is updated in the DOM.
+ */
 async function checkApiKeyStatus() {
     const apiKeyStatusDiv = document.getElementById('apiKeyStatus');
     if (!apiKeyStatusDiv) {
@@ -281,7 +343,11 @@ async function checkApiKeyStatus() {
     }
 }
 
-/** Displays a form for the user to input their OpenAI API key */
+/**
+ * Displays a form for the user to input their OpenAI API key.
+ *
+ * @returns {void}
+ */
 function displayApiKeyInputForm() {
     const apiKeyFormDiv = document.getElementById('apiKeyForm');
     if (!apiKeyFormDiv) {
@@ -305,7 +371,7 @@ function displayApiKeyInputForm() {
                 await chrome.storage.local.set({ openaiApiKey: apiKey });
                 console.log("API key saved successfully.");
                 document.getElementById('apiKeyStatus').innerHTML = 'OpenAI API key saved successfully.';
-                apiKeyFormDiv.innerHTML = ''; // Clear the form
+                apiKeyFormDiv.innerHTML = '';
             } catch (error) {
                 console.error("Error saving API key:", error);
                 document.getElementById('apiKeyStatus').innerHTML = 'Error saving API key.';
@@ -374,7 +440,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 handleGenericPage();
             }
             break;
-        default: // 'other'
+        default:
             handleGenericPage();
             break;
     }

@@ -29,9 +29,8 @@ Amazon Review Summarizer is a lightweight Chrome extension that provides a one-c
 - One-click summarization of Amazon product reviews
 - Clean, structured output with Pros & Cons
 - GPT-powered review interpretation
-- Popup UI
 - Review scraping optimized for Amazon DOM structure
-- Minimalist, Amazon-style design integration
+- User-specific OpenAI API Key
 
 ## Individual Contributions
 
@@ -50,7 +49,7 @@ Anish Agrawal
 
 ## Known Issues / Future Work
 Known Issues
-- May encounter rate-limiting when scraping large amounts of reviews
+- Amazon only shows 10 reviews at a time on the review page
 - Non-standard Amazon layouts (e.g., some international pages) may break scraping logic
 
 Future Improvements
