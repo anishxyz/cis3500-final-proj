@@ -445,3 +445,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             break;
     }
 });
+
+// Export functions for testing purposes
+// module.exports = {
+//     getPageInfo,
+//     handleProductPage,
+//     handleReviewPage,
+//     handleGenericPage
+// };

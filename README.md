@@ -12,15 +12,10 @@ Amazon Review Summarizer is a lightweight Chrome extension that provides a one-c
 
 ## Setup Instructions
 
-1. Clone or download this repository.
-
-   ```bash
-   git clone https://github.com/anishxyz/cis3500-final-proj.git
-   ```
-
+1. Download the latest release of this repository
 2. Navigate to chrome://extensions in your browser.
 3. Enable Developer Mode (top right).
-4. Click "Load unpacked" and select the project folder.
+4. Click "Load unpacked" and select the unzipped project folder.
 5. Navigate to any Amazon product page and click the extension icon to activate the summarizer.
 6. When prompted in popup, enter OpenAI API Key
 
