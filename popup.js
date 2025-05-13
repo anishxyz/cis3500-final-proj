@@ -69,18 +69,30 @@ async function getApiKey() {
 }
 
 
-/** Appends streamed summary content to #summaryOutput */
+/** Appends streamed summary content to #summaryOutput in DOM format */
 function displaySummaryStream(chunk, isFirstChunk = false) {
-    const summaryOutputDiv = document.getElementById('summaryOutput');
+    let summaryOutputDiv = document.getElementById('summaryOutput');
+
+    // Create the element if it doesn't exist
     if (!summaryOutputDiv) {
-        console.error("Summary output element not found.");
-        return;
+        summaryOutputDiv = document.createElement('div');
+        summaryOutputDiv.id = 'summaryOutput';
+        summaryOutputDiv.style.display = 'none'; // Initially hidden
+        summaryOutputDiv.style.marginTop = '10px'; // Add some spacing
+        contentDiv.appendChild(summaryOutputDiv); // Append to the main content area
     }
+
     if (isFirstChunk) {
         summaryOutputDiv.innerHTML = ''; // Clear previous summary
         summaryOutputDiv.style.display = 'block'; // Make visible
     }
-    summaryOutputDiv.textContent += chunk;
+
+    // Parse the chunk as HTML and append it to the summaryOutputDiv
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = chunk; // Parse the chunk as HTML
+    while (tempDiv.firstChild) {
+        summaryOutputDiv.appendChild(tempDiv.firstChild); // Append each child element
+    }
 }
 
 /** Creates the 'Summarize Reviews' button */
@@ -120,7 +132,7 @@ function createSummarizeButton() {
                     body: JSON.stringify({
                         model: "gpt-4o",
                         messages: [
-                            {"role": "system", "content": "You are a helpful assistant. Please summarize the provided Amazon product reviews in markdown format. Focus on common pros and cons mentioned across multiple reviews and provide a concise overall summary conclusion. Structure it clearly with headings like 'Pros', 'Cons', and 'Summary'."},
+                            {"role": "system", "content": "You are a helpful assistant. Please summarize the provided Amazon product reviews in raw text format. Focus on common pros and cons mentioned across multiple reviews and provide a concise overall summary conclusion. Structure it clearly with headings like 'Pros', 'Cons', and 'Summary', but don't use asterixes to bold any headings, this is raw text."},
                             {"role": "user", "content": `Here are the product reviews to summarize:\n\n${reviewsText}`}
                         ],
                         stream: true,
@@ -135,6 +147,7 @@ function createSummarizeButton() {
                 if (!response.body) {
                     throw new Error('Response body is null, cannot read stream.');
                 }
+
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
@@ -160,6 +173,7 @@ function createSummarizeButton() {
                     }
                 }
                 console.log("Stream finished.");
+                displaySummaryStream('\n\n--- END OF SUMMARY ---', false);
 
             } catch (error) {
                 console.error("Error calling OpenAI API:", error);
@@ -222,6 +236,7 @@ function handleReviewPage(tabId) {
         if (response && response.reviews) {
             console.log("Received reviews:", response.reviews.length);
             displayReviews(response.reviews);
+
         } else {
             console.log("No response or reviews array missing.");
             updatePopupContent(null, "Could not retrieve reviews. Make sure you are on the reviews page and refresh.");
@@ -242,7 +257,85 @@ function handleGenericPage() {
     updatePopupContent(null, "This extension works on Amazon product pages and product review pages.");
 }
 
+/** Checks for OpenAI API key and displays status */
+async function checkApiKeyStatus() {
+    const apiKeyStatusDiv = document.getElementById('apiKeyStatus');
+    if (!apiKeyStatusDiv) {
+        console.error("API key status element not found.");
+        return;
+    }
+
+    try {
+        const result = await chrome.storage.local.get('openaiApiKey');
+        const apiKey = result.openaiApiKey;
+
+        if (apiKey) {
+            apiKeyStatusDiv.innerHTML = 'OpenAI API key detected.';
+        } else {
+            apiKeyStatusDiv.innerHTML = 'No OpenAI API key found. Please enter your API key below.';
+            displayApiKeyInputForm();
+        }
+    } catch (error) {
+        console.error("Error checking API key status:", error);
+        apiKeyStatusDiv.innerHTML = 'Error checking API key status.';
+    }
+}
+
+/** Displays a form for the user to input their OpenAI API key */
+function displayApiKeyInputForm() {
+    const apiKeyFormDiv = document.getElementById('apiKeyForm');
+    if (!apiKeyFormDiv) {
+        console.error("API key form element not found.");
+        return;
+    }
+
+    apiKeyFormDiv.innerHTML = `
+        <label for="apiKeyInput">Enter OpenAI API Key:</label>
+        <input type="text" id="apiKeyInput" placeholder="Your API Key" style="width: 100%; margin-bottom: 10px;">
+        <button id="saveApiKeyBtn">Save API Key</button>
+    `;
+
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    saveApiKeyBtn.addEventListener('click', async () => {
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const apiKey = apiKeyInput.value.trim();
+
+        if (apiKey) {
+            try {
+                await chrome.storage.local.set({ openaiApiKey: apiKey });
+                console.log("API key saved successfully.");
+                document.getElementById('apiKeyStatus').innerHTML = 'OpenAI API key saved successfully.';
+                apiKeyFormDiv.innerHTML = ''; // Clear the form
+            } catch (error) {
+                console.error("Error saving API key:", error);
+                document.getElementById('apiKeyStatus').innerHTML = 'Error saving API key.';
+            }
+        } else {
+            alert("Please enter a valid API key.");
+        }
+    });
+}
+
 // Main Execution
+
+// Call the function to check API key status on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', () => {
+    const apiKeyStatusDiv = document.createElement('div');
+    apiKeyStatusDiv.id = 'apiKeyStatus';
+    apiKeyStatusDiv.style.marginBottom = '10px';
+
+    const apiKeyFormDiv = document.createElement('div');
+    apiKeyFormDiv.id = 'apiKeyForm';
+
+    const apiKeyDiv = document.getElementById('apiKey');
+    if (apiKeyDiv) {
+        apiKeyDiv.appendChild(apiKeyFormDiv);
+        apiKeyDiv.appendChild(apiKeyStatusDiv);
+        console.log("API key status div added to content.", apiKeyStatusDiv);
+    }
+
+    checkApiKeyStatus();
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     contentDiv = document.getElementById('content');

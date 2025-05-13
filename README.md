@@ -15,14 +15,14 @@ Amazon Review Summarizer is a lightweight Chrome extension that provides a one-c
 1. Clone or download this repository.
 
    ```bash
-   git clone https://github.com/your-username/amazon-review-summarizer.git
+   git clone https://github.com/anishxyz/cis3500-final-proj.git
    ```
 
 2. Navigate to chrome://extensions in your browser.
 3. Enable Developer Mode (top right).
 4. Click "Load unpacked" and select the project folder.
 5. Navigate to any Amazon product page and click the extension icon to activate the summarizer.
-API KEY SETUP
+6. When prompted in popup, enter OpenAI API Key
 
 ## Implemented Features
 
@@ -36,17 +36,17 @@ API KEY SETUP
 ## Individual Contributions
 
 Juno Kim
-Frontend formatting for GPT response
-E2E Testing
-Final presentation and demo walkthrough
+- Frontend formatting for GPT response
+- E2E Testing
+- Final presentation and demo walkthrough
 
 Anders Amlie
-Frontend logic for popup UI
-UI Styling
+- Frontend logic for popup UI
+- UI Styling
 
 Anish Agrawal
-Integrated GPT summarization backend
-Prompt engineering for effective summarization
+- Integrated GPT summarization backend
+- Prompt engineering for effective summarization
 
 ## Known Issues / Future Work
 Known Issues
