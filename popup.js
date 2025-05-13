@@ -200,7 +200,7 @@ function createSummarizeButton() {
                     }
                 }
                 console.log("Stream finished.");
-                displaySummaryStream('\\n\\n--- END OF SUMMARY ---', false);
+                // displaySummaryStream('\\n\\n--- END OF SUMMARY ---', false);
 
             } catch (error) {
                 console.error("Error calling OpenAI API:", error);
